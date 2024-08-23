@@ -22,16 +22,17 @@ public final class Constants {
         public static final double ENCODER_CONVERSION_FACTOR = GEAR_RATIO * WHEEL_CIRCUMFERENCE;
         public static final double TRACK_WIDTH = Units.inchesToMeters(21.875);
 
-        public static final double DRIVE_P = 0.1;
-        public static final double ANGULAR_P = 0.1;
+        public static final double DRIVE_P = 0.9; // +x speed [-1, 1] = DRIVE_P * vision distance METERS
+        public static final double ANGULAR_P = 0.025; // rotation rate from [-1, 1] = ANGULAR_P * vision rotation DEGREES
     }
 
     public static class PhotonVisionConstants {
         //Transform3d from the center of the robot to the camera mount position (ie, robot ➔ camera) in the Robot Coordinate System.
-        public static final Transform3d ROBOT_TO_CAMERA = new Transform3d(0, 0, 0, null);
-        public static final double CAMERA_HEIGHT = 0;
-        public static final double TARGET_HEIGHT = 0;
-        public static final double CAMERA_PITCH_RADIANS = 0;
-        public static final double TARGET_PITCH_RADIANS = 0;
+        public static final Transform3d ROBOT_TO_CAMERA =
+                new Transform3d(Units.inchesToMeters(18), 0, Units.inchesToMeters(25.5), null);
+        public static final double CAMERA_HEIGHT = Units.inchesToMeters(25.5);
+        public static final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30);
+        // We need the height of the april tag (target). I assume this is to prevent slight errors being compounded when solving for height
+        public static final double TARGET_HEIGHT = Units.inchesToMeters(57.5);
     }
 }

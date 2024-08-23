@@ -36,8 +36,8 @@ public class RobotContainer {
 
     private void configureBindings() {
         m_driverController.a().whileTrue(m_Drivetrain.rotateToTarget(m_driverController::getLeftY, m_driverController::getRightX));
-        m_driverController.b().whileTrue(m_Drivetrain.driveToTarget(m_driverController::getLeftY, m_driverController::getRightX, 2));
-        m_driverController.x().whileTrue(m_Drivetrain.driveRotateToTarget(m_driverController::getLeftY, m_driverController::getRightX, 2));
+        m_driverController.b().whileTrue(m_Drivetrain.driveToTarget(m_driverController::getLeftY, m_driverController::getRightX, 1.5));
+        m_driverController.x().whileTrue(m_Drivetrain.driveRotateToTarget(m_driverController::getLeftY, m_driverController::getRightX, 1.5));
     }
 
     public Command getAutonomousCommand() {

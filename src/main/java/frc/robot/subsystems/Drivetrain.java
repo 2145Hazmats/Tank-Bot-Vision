@@ -51,7 +51,7 @@ public class Drivetrain extends SubsystemBase {
 
   private final ADIS16470_IMU gyro = new ADIS16470_IMU();
 
-  private PhotonCamera camera = new PhotonCamera("photonvision");
+  private PhotonCamera camera = new PhotonCamera("Arducam_OV9281_USB_Camera");
   private PhotonPipelineResult result = null;
   private PhotonTrackedTarget target = null;
   private PhotonPoseEstimator poseEstimator = new PhotonPoseEstimator(
@@ -130,6 +130,7 @@ public class Drivetrain extends SubsystemBase {
     }, this);
   }
 
+  // Rotates towards an april tag (uses degrees NOT radians)
   public Command rotateToTarget(DoubleSupplier leftY, DoubleSupplier rightX) {
     return Commands.run(
         () -> {
@@ -138,12 +139,14 @@ public class Drivetrain extends SubsystemBase {
           // Get the current best target
           target = result.getBestTarget();
 
+          // If there is a valid target, rotate towards it using PID
           if (result.hasTargets()) {
             m_differentialDrive.arcadeDrive(
                 leftY.getAsDouble(),
-                -rotController.calculate(result.getBestTarget().getYaw(), 0)
+                -rotController.calculate(result.getBestTarget().getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
             );
             SmartDashboard.putNumber("Rot Offset", result.getBestTarget().getYaw());
+            // For "Vision Rot Speed", positive = clockwise rotation. arcadeDrivealso uses positive = clockwise rotation
             SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(result.getBestTarget().getYaw(), 0));
           }
           else {
@@ -157,6 +160,7 @@ public class Drivetrain extends SubsystemBase {
     );
   }
 
+  //Drive towards an april tag, and stop a set meters away from the april tag
   public Command driveToTarget(DoubleSupplier leftY, DoubleSupplier rightX, double desiredRange) {
     return Commands.run(
         () -> {
@@ -165,7 +169,9 @@ public class Drivetrain extends SubsystemBase {
           // Get the current best target
           target = result.getBestTarget();
 
+          // if there is a target, drive towards it using PID
           if (result.hasTargets()) {
+            // calculate the distance in meters of the april tag (range == distance)
             double range = PhotonUtils.calculateDistanceToTargetMeters(
               PhotonVisionConstants.CAMERA_HEIGHT,
               PhotonVisionConstants.TARGET_HEIGHT,
@@ -173,11 +179,11 @@ public class Drivetrain extends SubsystemBase {
               Units.degreesToRadians(result.getBestTarget().getPitch())
             );
             m_differentialDrive.arcadeDrive(
-                driveController.calculate(range, desiredRange),
+                driveController.calculate(range, desiredRange), //calculate a PID output using the april tag's distance and the desired distance (meters)
                 rightX.getAsDouble()
             );
             SmartDashboard.putNumber("Distance To Target", range);
-            SmartDashboard.putNumber("Desired Range", desiredRange);
+            SmartDashboard.putNumber("Desired Distance", desiredRange);
             SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
           }
           else {
@@ -191,12 +197,11 @@ public class Drivetrain extends SubsystemBase {
     );
   }
 
+  // Drives and rotates towards and april tag. Stops a set distance away. For more documentation, see rotateToTarget and driveToTarget
   public Command driveRotateToTarget(DoubleSupplier leftY, DoubleSupplier rightX, double desiredRange) {
     return Commands.run(
         () -> {
-          // Update Vision results
           result = camera.getLatestResult();
-          // Get the current best target
           target = result.getBestTarget();
 
           if (result.hasTargets()) {
@@ -231,20 +236,6 @@ public class Drivetrain extends SubsystemBase {
     m_driveOdometry.addVisionMeasurement(visionPose2d, timestampSeconds); //Timer.getFPGATimestamp());
   }
 
-  /*public Pose2d getVisionPose2D() {
-    // Calculate robot's field relative pose
-    return Pose2d robotPose = PhotonUtils.estimateFieldToRobot(
-        PhotonVisionConstants.CAMERA_HEIGHT,
-        PhotonVisionConstants.TARGET_HEIGHT,
-        PhotonVisionConstants.CAMERA_PITCH,
-        PhotonVisionConstants.TARGET_PITCH,
-        Rotation2d.fromDegrees(-target.getYaw()),
-        getGyroRotation2d(),
-        targetPose,
-        cameraToRobot
-    );
-  }*/
-
   @Override
   public void periodic() {
     // Update Vision results
@@ -258,6 +249,7 @@ public class Drivetrain extends SubsystemBase {
       latestRobotPose = null;
     }
 
+    // Update odomotrey with vision measurements (updateWithTime important)
     m_driveOdometry.updateWithTime(
         Timer.getFPGATimestamp(),
         new Rotation2d(Units.degreesToRadians(gyro.getAngle())),
