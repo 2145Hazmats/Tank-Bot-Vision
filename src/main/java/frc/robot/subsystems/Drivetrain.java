@@ -39,7 +39,7 @@ import frc.robot.Constants.DrivetrainConstants;
 import frc.robot.Constants.PhotonVisionConstants;
 
 public class Drivetrain extends SubsystemBase {
-
+  //TODO: Add documentation comments from line 42 to 96!!!!!!!!!!!!!!!!!!!!!!!!!!!
   private DifferentialDrive m_differentialDrive;
   private DifferentialDriveKinematics m_driveKinematics;
   private DifferentialDrivePoseEstimator m_driveOdometry;
@@ -95,20 +95,25 @@ public class Drivetrain extends SubsystemBase {
     SmartDashboard.putData("Field", m_field);
   }
 
+  // Return the gyro's angle
   public double getGyroAngle() {
     return gyro.getAngle();
   }
 
+  // Returns the gyro's Rotation2d
   public Rotation2d getGyroRotation2d() {
     return new Rotation2d(Units.degreesToRadians(gyro.getAngle()));
   }
 
+  // Returns the robot's Pose2D
   public Pose2d getPose2d() {
     return m_driveOdometry.getEstimatedPosition();
   }
   
+  // Master drive command for Drivetrain. Uses controller input and a supplied "driveType" string as parameters
   public Command drive(DoubleSupplier leftY, DoubleSupplier rightX, DoubleSupplier rightY, Supplier<String> driveType) {
     return Commands.run(() -> {
+      // switch case statement to call arcadeDrive() with different arguments based on "driveType"
       switch (driveType.get()) {
         case "arcadeDrive":
           m_differentialDrive.arcadeDrive(leftY.getAsDouble(), rightX.getAsDouble());
@@ -122,7 +127,11 @@ public class Drivetrain extends SubsystemBase {
         case "curvatureDrive2":
           m_differentialDrive.curvatureDrive(leftY.getAsDouble(), rightX.getAsDouble(), true);
           break;
+        default:
+          System.out.println("Invalid driveType selected!");
+          break;
       }
+      // Log information to SmartDashboard 
       SmartDashboard.putNumber("Controller Left Y", leftY.getAsDouble());
       SmartDashboard.putNumber("Controller Right X", rightX.getAsDouble());
       SmartDashboard.putNumber("Controller Right Y", rightY.getAsDouble());
@@ -130,134 +139,144 @@ public class Drivetrain extends SubsystemBase {
     }, this);
   }
 
-  // Rotates towards an april tag (uses degrees NOT radians)
+  // Rotates towards an april tag using 2D processing
   public Command rotateToTarget(DoubleSupplier leftY, DoubleSupplier rightX) {
-    return Commands.run(
-        () -> {
-          // Update Vision results
-          result = camera.getLatestResult();
-          // Get the current best target
-          target = result.getBestTarget();
+    return Commands.run(() -> {
+      // Get the latest camera results and target
+      result = camera.getLatestResult();
+      target = result.getBestTarget();
 
-          // If there is a valid target, rotate towards it using PID
-          if (result.hasTargets()) { // or if (target == null)
-            m_differentialDrive.arcadeDrive(
-                leftY.getAsDouble(),
-                -rotController.calculate(target.getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
-            );
-            SmartDashboard.putNumber("Rot Offset", target.getYaw());
-            // For "Vision Rot Speed", positive = clockwise rotation. arcadeDrivealso uses positive = clockwise rotation
-            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
-          }
-          else {
-            m_differentialDrive.arcadeDrive(
-                leftY.getAsDouble(),
-                rightX.getAsDouble()
-            );
-          }
-        },
-        this
-    );
+      // Only use vision information if there is a valid target
+      if (result.hasTargets()) { // or if (target != null)
+        // Calls arcadeDrive using the output of the rotation PID controller and joystick input
+        m_differentialDrive.arcadeDrive(
+            leftY.getAsDouble(),
+            -rotController.calculate(target.getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
+        );
+        // Log information to SmartDashboard 
+        SmartDashboard.putNumber("Rot Offset", target.getYaw());
+        // For target.getYaw(), positive = clockwise rotation. This is because in arcadeDrive, positive = clockwise rotation
+        SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
+      }
+      // If there are no valid targets, call arcadeDrive with joystick input
+      else {
+        m_differentialDrive.arcadeDrive(
+            leftY.getAsDouble(),
+            rightX.getAsDouble()
+        );
+      }
+    }, this);
   }
 
-  //Drive towards an april tag, and stop a set meters away from the april tag
+  // Drives towards an april tag using 2D processing (3d solver). Stops a set distance away
   public Command driveToTarget(DoubleSupplier leftY, DoubleSupplier rightX, double desiredRange) {
-    return Commands.run(
-        () -> {
-          // Update Vision results
-          result = camera.getLatestResult();
-          // Get the current best target
-          target = result.getBestTarget();
+    // Returns a command that runs periodically
+    return Commands.run(() -> {
+      // Get the latest camera results and target
+      result = camera.getLatestResult();
+      target = result.getBestTarget();
 
-          // if there is a target, drive towards it using PID
-          if (result.hasTargets()) {
-            // calculate the distance in meters of the april tag (range == distance)
-            double range = PhotonUtils.calculateDistanceToTargetMeters(
-              PhotonVisionConstants.CAMERA_HEIGHT,
-              PhotonVisionConstants.TARGET_HEIGHT,
-              PhotonVisionConstants.CAMERA_PITCH_RADIANS,
-              Units.degreesToRadians(target.getPitch())
-            );
-            m_differentialDrive.arcadeDrive(
-                driveController.calculate(range, desiredRange), //calculate a PID output using the april tag's distance and the desired distance (meters)
-                rightX.getAsDouble()
-            );
-            SmartDashboard.putNumber("Distance To Target", range);
-            SmartDashboard.putNumber("Desired Distance", desiredRange);
-            SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
-          }
-          else {
-            m_differentialDrive.arcadeDrive(
-                leftY.getAsDouble(),
-                rightX.getAsDouble()
-            );
-          }
-        },
-        this
-    );
+      // Only use vision information if there is a valid target
+      if (result.hasTargets()) {
+        // Calculates the distance to the target using constants along with the target's pitch
+        // With only 1 variable, this is more stable than SolvePNP with a 6d solver (we can use this in 2D processing)
+        double range = PhotonUtils.calculateDistanceToTargetMeters(
+            PhotonVisionConstants.CAMERA_HEIGHT,
+            PhotonVisionConstants.SPEAKER_TARGET_HEIGHT,
+            PhotonVisionConstants.CAMERA_PITCH_RADIANS,
+            Units.degreesToRadians(target.getPitch())
+        );
+        // Calls arcadeDrive using the output of the drive PID controller and joystick input
+        m_differentialDrive.arcadeDrive(
+            driveController.calculate(range, desiredRange), //calculate a PID output using the targets's distance and the desired distance (meters)
+            rightX.getAsDouble()
+        );
+        // Log information to SmartDashboard 
+        SmartDashboard.putNumber("Distance To Target", range);
+        SmartDashboard.putNumber("Desired Distance", desiredRange);
+        SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
+      }
+      // If there are no valid targets, call arcadeDrive with joystick input
+      else {
+        m_differentialDrive.arcadeDrive(
+            leftY.getAsDouble(),
+            rightX.getAsDouble()
+        );
+      }
+    }, this);
   }
 
-  // Drives and rotates towards and april tag. Stops a set distance away. For more documentation, see rotateToTarget and driveToTarget
+  // Drives and rotates towards an april tag using 2D processing (3d solver). Stops a set distance away
   public Command driveRotateToTarget(DoubleSupplier leftY, DoubleSupplier rightX, double desiredRange) {
-    return Commands.run(
-        () -> {
-          result = camera.getLatestResult();
-          target = result.getBestTarget();
+    // Returns a command that runs periodically
+    return Commands.run(() -> {
+      // Get the latest camera results and target
+      result = camera.getLatestResult();
+      target = result.getBestTarget();
 
-          if (result.hasTargets()) {
-            double range = PhotonUtils.calculateDistanceToTargetMeters(
-              PhotonVisionConstants.CAMERA_HEIGHT,
-              PhotonVisionConstants.TARGET_HEIGHT,
-              PhotonVisionConstants.CAMERA_PITCH_RADIANS,
-              Units.degreesToRadians(target.getPitch())
-            );
-            m_differentialDrive.arcadeDrive(
-                driveController.calculate(range, desiredRange),
-                -rotController.calculate(target.getYaw(), 0)
-            );
-            SmartDashboard.putNumber("Distance To Target", range);
-            SmartDashboard.putNumber("Desired Distance", desiredRange);
-            SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
-            SmartDashboard.putNumber("Rot Offset", target.getYaw());
-            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
-          }
-          else {
-            m_differentialDrive.arcadeDrive(
-                leftY.getAsDouble(),
-                rightX.getAsDouble()
-            );
-          }
-        },
-        this
-    );
+      // Only use vision information if there is a valid target
+      if (result.hasTargets()) {
+        // Calculates the distance to the target using constants along with the target's pitch
+        // With only 1 variable, this is more stable than SolvePNP with a 6d solver (we can use this in 2D processing)
+        double range = PhotonUtils.calculateDistanceToTargetMeters(
+            PhotonVisionConstants.CAMERA_HEIGHT,
+            PhotonVisionConstants.SPEAKER_TARGET_HEIGHT,
+            PhotonVisionConstants.CAMERA_PITCH_RADIANS,
+            Units.degreesToRadians(target.getPitch())
+        );
+        // Calls arcadeDrive using the output of PID controllers
+        m_differentialDrive.arcadeDrive(
+            driveController.calculate(range, desiredRange), //calculate a PID output using the targets's distance and the desired distance (meters)
+            -rotController.calculate(target.getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
+        );
+        // Log information to SmartDashboard 
+        SmartDashboard.putNumber("Distance To Target", range);
+        SmartDashboard.putNumber("Desired Distance", desiredRange);
+        SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
+        SmartDashboard.putNumber("Rot Offset", target.getYaw());
+        SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
+      }
+      // If there are no valid targets, call arcadeDrive with joystick input
+      else {
+        m_differentialDrive.arcadeDrive(
+            leftY.getAsDouble(),
+            rightX.getAsDouble()
+        );
+      }
+    }, this);
   }
 
-  // Add a vision measurement to the robot's odometry
+  // Add a vision measurement to the existing WPILib PoseEstimator odometry
+  // "timestampSeconds" is the timestamp associated with the visionPose2d passed as an argument
+  // TIP: For the current timestamp, use "Timer.getFPGATimestamp()" (don't do that in this method)
   public void addVisionPose2d(Pose2d visionPose2d, double timestampSeconds) {
-    m_driveOdometry.addVisionMeasurement(visionPose2d, timestampSeconds); //Timer.getFPGATimestamp());
+    m_driveOdometry.addVisionMeasurement(visionPose2d, timestampSeconds);
   }
 
   @Override
   public void periodic() {
-    // Update Vision results
-    result = camera.getLatestResult();
-
-    // Try to update latestRobotPose with a new EstimatedRobotPose and add the vision Pose2d to drivetrains odometry
-    try {
-      latestRobotPose = poseEstimator.update(result).get();
-      addVisionPose2d(latestRobotPose.estimatedPose.toPose2d(), latestRobotPose.timestampSeconds);
-    } catch (Exception e) { // catch = catching an exception, java.util.Optional.get() throws NoSuchElementException if no value is present
-      latestRobotPose = null;
-    }
-
-    // Update drive odometry without using vision
+    // Update drive odometry using encoders (without vision)
+    // This is still important because addVisionMeasurement() is based on existing odometry
     m_driveOdometry.updateWithTime(
         Timer.getFPGATimestamp(),
         new Rotation2d(Units.degreesToRadians(gyro.getAngle())),
         -leftMotorEncoder.getPosition(),
         -rightMotorEncoder.getPosition()
     );
+
+    // Get the latest camera results
+    result = camera.getLatestResult();
+
+    // Try to update "latestRobotPose" with a new "EstimatedRobotPose" using a "PhotonPoseEstimator"
+    // If "latestRobotPose" is updated, call addVisionPose2d() and pass the updated "latestRobotPose" as an argument
+    try {
+      latestRobotPose = poseEstimator.update(result).get();
+      addVisionPose2d(latestRobotPose.estimatedPose.toPose2d(), latestRobotPose.timestampSeconds);
+    } catch (Exception e) { // catch = catching an exception, java.util.Optional.get() throws NoSuchElementException if no value is present
+      latestRobotPose = null; // If there is no updated "EstimatedRobotPose", update "latestRobotPose" to null
+    }
     
+    // Log information to SmartDashboard 
     SmartDashboard.putNumber("Rot", gyro.getAngle());
     SmartDashboard.putNumber("Bot X", getPose2d().getX());
     SmartDashboard.putNumber("Bot Y", getPose2d().getY());

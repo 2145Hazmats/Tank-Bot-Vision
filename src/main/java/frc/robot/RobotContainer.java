@@ -8,14 +8,16 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Drivetrain;
 
 public class RobotContainer {
+    // Instantiate Subsystems
     private Drivetrain m_Drivetrain = new Drivetrain();
+    // Operator controllers
     private final CommandXboxController m_driverController =
             new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER);
-    //private final CommandXboxController m_operatorController =
-    //        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER);
+    private final CommandXboxController m_operatorController =
+            new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER);
 
     public RobotContainer() {
-        // Allows choosing of the drive type trhough SmartDashboard
+        // Allows choosing the drive type through SmartDashboard
         SendableChooser<String> m_driveSendableChooser = new SendableChooser<String>();
         m_driveSendableChooser.setDefaultOption("arcadeDrive",  "arcadeDrive");
         m_driveSendableChooser.addOption("tankDrive", "tankDrive");
@@ -23,6 +25,8 @@ public class RobotContainer {
         m_driveSendableChooser.addOption("curvatureDrive2", "curvatureDrive2");
         SmartDashboard.putData("Drive Type", m_driveSendableChooser);
 
+        // Default Drivetrain command. Calls the "drive" method in Drivetrain
+        // Controller inputs and the selected drive type are passed as arguments
         m_Drivetrain.setDefaultCommand(m_Drivetrain.drive(
                 m_driverController::getLeftY,
                 m_driverController::getRightX,
@@ -34,6 +38,7 @@ public class RobotContainer {
     }
 
     private void configureBindings() {
+        // Implementation of various vision methods. The parameter "desiredRange" can be freely changed
         m_driverController.a().whileTrue(m_Drivetrain.rotateToTarget(m_driverController::getLeftY, m_driverController::getRightX));
         m_driverController.b().whileTrue(m_Drivetrain.driveToTarget(m_driverController::getLeftY, m_driverController::getRightX, 1.5));
         m_driverController.x().whileTrue(m_Drivetrain.driveRotateToTarget(m_driverController::getLeftY, m_driverController::getRightX, 1.5));
