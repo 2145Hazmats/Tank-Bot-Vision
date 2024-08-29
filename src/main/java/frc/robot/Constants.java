@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.util.Units;
 
@@ -29,7 +30,7 @@ public final class Constants {
     public static class PhotonVisionConstants {
         //Transform3d from the center of the robot to the camera mount position (ie, robot ➔ camera) in the Robot Coordinate System.
         public static final Transform3d ROBOT_TO_CAMERA =
-                new Transform3d(Units.inchesToMeters(18), 0, Units.inchesToMeters(25.5), null);
+                new Transform3d(Units.inchesToMeters(18), 0, Units.inchesToMeters(25.5), new Rotation3d());
         public static final double CAMERA_HEIGHT = Units.inchesToMeters(25.5);
         public static final double CAMERA_PITCH_RADIANS = Units.degreesToRadians(30);
         // We need the height of the april tag (target). I assume this is to prevent slight errors being compounded when solving for height

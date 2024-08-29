@@ -8,12 +8,11 @@ import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Drivetrain;
 
 public class RobotContainer {
-
     private Drivetrain m_Drivetrain = new Drivetrain();
     private final CommandXboxController m_driverController =
             new CommandXboxController(OperatorConstants.DRIVER_CONTROLLER);
-    private final CommandXboxController m_operatorController =
-            new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER);
+    //private final CommandXboxController m_operatorController =
+    //        new CommandXboxController(OperatorConstants.OPERATOR_CONTROLLER);
 
     public RobotContainer() {
         // Allows choosing of the drive type trhough SmartDashboard

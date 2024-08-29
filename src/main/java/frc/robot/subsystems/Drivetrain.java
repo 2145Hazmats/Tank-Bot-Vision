@@ -57,8 +57,8 @@ public class Drivetrain extends SubsystemBase {
   private PhotonPoseEstimator poseEstimator = new PhotonPoseEstimator(
       AprilTagFieldLayout.loadField(AprilTagFields.k2024Crescendo),
       //Calculates a new robot position estimate by combining all visible tag corners.
-      //Recommended for all teams as it will be the most accurate.
-      //Must configure the AprilTagFieldLayout properly in the UI, please see https://docs.photonvision.org/en/latest/docs/apriltag-pipelines/multitag.html#multitag-localization for more information.
+      //If using MULTI_TAG_PNP_ON_COPROCESSOR, must configure the AprilTagFieldLayout properly in the UI.
+      //https://docs.photonvision.org/en/latest/docs/apriltag-pipelines/multitag.html#multitag-localization
       PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR,
       camera,
       PhotonVisionConstants.ROBOT_TO_CAMERA);
@@ -140,14 +140,14 @@ public class Drivetrain extends SubsystemBase {
           target = result.getBestTarget();
 
           // If there is a valid target, rotate towards it using PID
-          if (result.hasTargets()) {
+          if (result.hasTargets()) { // or if (target == null)
             m_differentialDrive.arcadeDrive(
                 leftY.getAsDouble(),
-                -rotController.calculate(result.getBestTarget().getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
+                -rotController.calculate(target.getYaw(), 0) //calcuate a PID output based on the target's yaw (in degrees)
             );
-            SmartDashboard.putNumber("Rot Offset", result.getBestTarget().getYaw());
+            SmartDashboard.putNumber("Rot Offset", target.getYaw());
             // For "Vision Rot Speed", positive = clockwise rotation. arcadeDrivealso uses positive = clockwise rotation
-            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(result.getBestTarget().getYaw(), 0));
+            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
           }
           else {
             m_differentialDrive.arcadeDrive(
@@ -176,7 +176,7 @@ public class Drivetrain extends SubsystemBase {
               PhotonVisionConstants.CAMERA_HEIGHT,
               PhotonVisionConstants.TARGET_HEIGHT,
               PhotonVisionConstants.CAMERA_PITCH_RADIANS,
-              Units.degreesToRadians(result.getBestTarget().getPitch())
+              Units.degreesToRadians(target.getPitch())
             );
             m_differentialDrive.arcadeDrive(
                 driveController.calculate(range, desiredRange), //calculate a PID output using the april tag's distance and the desired distance (meters)
@@ -209,17 +209,17 @@ public class Drivetrain extends SubsystemBase {
               PhotonVisionConstants.CAMERA_HEIGHT,
               PhotonVisionConstants.TARGET_HEIGHT,
               PhotonVisionConstants.CAMERA_PITCH_RADIANS,
-              Units.degreesToRadians(result.getBestTarget().getPitch())
+              Units.degreesToRadians(target.getPitch())
             );
             m_differentialDrive.arcadeDrive(
                 driveController.calculate(range, desiredRange),
-                -rotController.calculate(result.getBestTarget().getYaw(), 0)
+                -rotController.calculate(target.getYaw(), 0)
             );
             SmartDashboard.putNumber("Distance To Target", range);
-            SmartDashboard.putNumber("Desired Range", desiredRange);
+            SmartDashboard.putNumber("Desired Distance", desiredRange);
             SmartDashboard.putNumber("Vision Drive Speed", driveController.calculate(range, desiredRange));
-            SmartDashboard.putNumber("Rot Offset", result.getBestTarget().getYaw());
-            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(result.getBestTarget().getYaw(), 0));
+            SmartDashboard.putNumber("Rot Offset", target.getYaw());
+            SmartDashboard.putNumber("Vision Rot Speed", -rotController.calculate(target.getYaw(), 0));
           }
           else {
             m_differentialDrive.arcadeDrive(
@@ -232,6 +232,7 @@ public class Drivetrain extends SubsystemBase {
     );
   }
 
+  // Add a vision measurement to the robot's odometry
   public void addVisionPose2d(Pose2d visionPose2d, double timestampSeconds) {
     m_driveOdometry.addVisionMeasurement(visionPose2d, timestampSeconds); //Timer.getFPGATimestamp());
   }
@@ -249,7 +250,7 @@ public class Drivetrain extends SubsystemBase {
       latestRobotPose = null;
     }
 
-    // Update odomotrey with vision measurements (updateWithTime important)
+    // Update drive odometry without using vision
     m_driveOdometry.updateWithTime(
         Timer.getFPGATimestamp(),
         new Rotation2d(Units.degreesToRadians(gyro.getAngle())),
@@ -260,8 +261,8 @@ public class Drivetrain extends SubsystemBase {
     SmartDashboard.putNumber("Rot", gyro.getAngle());
     SmartDashboard.putNumber("Bot X", getPose2d().getX());
     SmartDashboard.putNumber("Bot Y", getPose2d().getY());
-    if (latestRobotPose != null) { SmartDashboard.putNumber("Vision Rot", latestRobotPose.estimatedPose.getRotation().getAngle()); }
-    if (latestRobotPose != null) { SmartDashboard.putNumber("Vision X", latestRobotPose.estimatedPose.getY()); }
+    if (latestRobotPose != null) { SmartDashboard.putNumber("Vision Rot", Units.radiansToDegrees(latestRobotPose.estimatedPose.getRotation().getAngle())); }
+    if (latestRobotPose != null) { SmartDashboard.putNumber("Vision X", latestRobotPose.estimatedPose.getX()); }
     if (latestRobotPose != null) { SmartDashboard.putNumber("Vision Y", latestRobotPose.estimatedPose.getY()); }
     if (latestRobotPose != null) { SmartDashboard.putNumber("Vision Timestamp", latestRobotPose.timestampSeconds); }
     m_field.setRobotPose(m_driveOdometry.getEstimatedPosition());
