@@ -32,7 +32,7 @@ public final class Constants {
 
     // Constants used for PhotonVision
     public static class PhotonVisionConstants {
-        //Transform3d from the center of the robot to the camera mount position (ie, robot ➔ camera) in the Robot Coordinate System.
+        //Transform3d from the center of the robot to the camera mount position (ie, robot ➔ camera) in the Robot Coordinate System
         public static final Transform3d ROBOT_TO_CAMERA =
                 new Transform3d(Units.inchesToMeters(18), 0, Units.inchesToMeters(25.5), new Rotation3d());
         public static final double CAMERA_HEIGHT = ROBOT_TO_CAMERA.getZ();

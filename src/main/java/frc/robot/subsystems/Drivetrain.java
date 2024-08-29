@@ -39,11 +39,11 @@ import frc.robot.Constants.DrivetrainConstants;
 import frc.robot.Constants.PhotonVisionConstants;
 
 public class Drivetrain extends SubsystemBase {
-  //TODO: Add documentation comments from line 42 to 96!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // Declaring DifferentialDrive, kinematics, and odometry for a basic non-vision tank robot
   private DifferentialDrive m_differentialDrive;
   private DifferentialDriveKinematics m_driveKinematics;
   private DifferentialDrivePoseEstimator m_driveOdometry;
-
+  // Motors, encoders, and the gyro
   private final CANSparkMax leftMotor = new CANSparkMax(DrivetrainConstants.MOTOR_LEFT_ID, MotorType.kBrushless);
   private final CANSparkMax rightMotor = new CANSparkMax(DrivetrainConstants.MOTOR_RIGHT_ID, MotorType.kBrushless);
   private RelativeEncoder leftMotorEncoder = leftMotor.getEncoder();
@@ -51,9 +51,11 @@ public class Drivetrain extends SubsystemBase {
 
   private final ADIS16470_IMU gyro = new ADIS16470_IMU();
 
+  // PhotonVision objects
   private PhotonCamera camera = new PhotonCamera("Arducam_OV9281_USB_Camera");
   private PhotonPipelineResult result = null;
   private PhotonTrackedTarget target = null;
+  // PhotonVision objects used in vision localization
   private PhotonPoseEstimator poseEstimator = new PhotonPoseEstimator(
       AprilTagFieldLayout.loadField(AprilTagFields.k2024Crescendo),
       //Calculates a new robot position estimate by combining all visible tag corners.
@@ -63,24 +65,25 @@ public class Drivetrain extends SubsystemBase {
       camera,
       PhotonVisionConstants.ROBOT_TO_CAMERA);
   private EstimatedRobotPose latestRobotPose = null;
-
+  // PIDControllers used in vision
   private PIDController driveController = new PIDController(DrivetrainConstants.DRIVE_P, 0, 0);
   private PIDController rotController = new PIDController(DrivetrainConstants.ANGULAR_P, 0, 0);
-
+  // Field to display on SmartDashboard
   private final Field2d m_field = new Field2d();
 
   public Drivetrain() {
+    // Encoder conversion and setup
     rightMotorEncoder.setPositionConversionFactor(DrivetrainConstants.ENCODER_CONVERSION_FACTOR);
     leftMotorEncoder.setPositionConversionFactor(DrivetrainConstants.ENCODER_CONVERSION_FACTOR);
     rightMotorEncoder.setPosition(0);
     leftMotorEncoder.setPosition(0);
-
+    // Motor setup
     leftMotor.setInverted(true);
     rightMotor.setInverted(false);
-
+    // Gyro setup
     gyro.calibrate();
     gyro.reset();
-
+    // Initializing DifferentialDrive, kinematics, and odometry for a basic non-vision tank robot
     m_differentialDrive = new DifferentialDrive(leftMotor, rightMotor);
     m_driveKinematics = new DifferentialDriveKinematics(DrivetrainConstants.TRACK_WIDTH);
     m_driveOdometry = new DifferentialDrivePoseEstimator(
@@ -131,7 +134,7 @@ public class Drivetrain extends SubsystemBase {
           System.out.println("Invalid driveType selected!");
           break;
       }
-      // Log information to SmartDashboard 
+      // Log information to SmartDashboard
       SmartDashboard.putNumber("Controller Left Y", leftY.getAsDouble());
       SmartDashboard.putNumber("Controller Right X", rightX.getAsDouble());
       SmartDashboard.putNumber("Controller Right Y", rightY.getAsDouble());
@@ -147,7 +150,7 @@ public class Drivetrain extends SubsystemBase {
       target = result.getBestTarget();
 
       // Only use vision information if there is a valid target
-      if (result.hasTargets()) { // or if (target != null)
+      if (result.hasTargets()) { // or "if (target != null)"
         // Calls arcadeDrive using the output of the rotation PID controller and joystick input
         m_differentialDrive.arcadeDrive(
             leftY.getAsDouble(),
